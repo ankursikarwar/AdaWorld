@@ -46,14 +46,26 @@ echo " HF Repo:  $HF_REPO_ID"
 echo " Data Dir: $DATA_DIR"
 echo "============================================"
 
-# 1. Install dependencies if needed
+# 1. Load required modules (adjust versions for your cluster)
 echo ""
-echo "[1/3] Checking dependencies..."
-pip install pyarrow huggingface_hub --quiet 2>/dev/null || true
+echo "[1/4] Loading modules and setting up Python environment..."
+module load StdEnv/2023 intel/2023.2.1 cuda/11.8 arrow/17 python/3.10 opencv 2>/dev/null || {
+    echo "  WARNING: 'module load' not available or some modules missing."
+    echo "  Make sure CUDA 11.8, Python 3.10, pyarrow, and opencv are available."
+}
+VENV_DIR="${DATA_DIR%/*}/venv_adaworld"
+if [ ! -d "$VENV_DIR" ]; then
+    echo "  Creating virtual environment at $VENV_DIR ..."
+    python3 -m venv "$VENV_DIR"
+fi
+source "$VENV_DIR/bin/activate"
+echo "  Installing requirements..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+pip install -r "$SCRIPT_DIR/requirements_cc.txt" --quiet 2>&1 | tail -3
 
 # 2. Download data from HuggingFace
 echo ""
-echo "[2/3] Downloading data from HuggingFace..."
+echo "[2/4] Downloading data from HuggingFace..."
 echo "  This may take a while for large datasets."
 echo ""
 
@@ -78,7 +90,7 @@ fi
 
 # 3. Verify
 echo ""
-echo "[3/3] Verifying data..."
+echo "[3/4] Verifying data..."
 echo ""
 for ds in procgen retro mira ssv2_our; do
     if [ -d "$DATA_DIR/$ds" ]; then
@@ -87,6 +99,9 @@ for ds in procgen retro mira ssv2_our; do
     fi
 done
 
+# 4. Activation reminder
+echo ""
+echo "[4/4] Environment ready."
 echo ""
 echo "============================================"
 echo " Setup complete!"
@@ -103,4 +118,7 @@ echo "   python main.py fit --config config/lam_game_cc.yaml"
 echo ""
 echo " Make sure data_root in the _cc configs points to:"
 echo "   $DATA_DIR"
+echo ""
+echo " Activate the env before training:"
+echo "   source $VENV_DIR/bin/activate"
 echo "============================================"
