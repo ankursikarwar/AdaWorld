@@ -1,0 +1,77 @@
+model:
+  # --- LAM (trained from scratch alongside CLIP alignment) ---
+  lam_checkpoint: ""
+
+  # --- LAM architecture (must match checkpoint) ---
+  image_channels: 3
+  lam_model_dim: 1024
+  lam_latent_dim: 32
+  lam_patch_size: 16
+  lam_enc_blocks: 16
+  lam_dec_blocks: 16
+  lam_num_heads: 16
+
+  # --- CLIP ---
+  clip_model_name: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/clip-vit-large-patch14
+  clip_dim: 768
+  labels_json: /home/mila/a/ankur.sikarwar/scratch/WORLD_MODEL_PROJECT/data/ssv2/raw/labels/labels.json
+
+  # --- MLP projection ---
+  projection_hidden_dim: 256
+
+  # --- Loss ---
+  loss_type: regression
+  beta: 0.0002
+
+  # --- Pair sampling ---
+  num_pairs_per_video: 15
+  max_pairs_per_chunk: 32
+
+  # --- Training ---
+  log_interval: 500
+  lr_lam: 2.5e-5
+  lr_projection: 1e-3
+  weight_decay: 1e-2
+
+data:
+  data_root: ../data
+  labels_dir: /home/mila/a/ankur.sikarwar/scratch/WORLD_MODEL_PROJECT/data/ssv2/raw/labels
+  max_frames: 80
+  resolution: 256
+  output_format: t h w c
+  batch_size: 4
+  num_workers: 8
+
+trainer:
+  max_epochs: 100
+  accelerator: gpu
+  num_nodes: 1
+  devices: 0,1,2,3
+  strategy: ddp_find_unused_parameters_true
+  precision: 16-mixed
+  log_every_n_steps: 100
+  accumulate_grad_batches: 2
+  gradient_clip_val: 0.3
+
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        dirpath: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_ckpts_ssv2_clip_regression_v1
+        verbose: true
+        save_last: true
+        save_top_k: 3
+        monitor: val/total_loss_epoch
+        mode: min
+
+  logger:
+    - class_path: lightning.pytorch.loggers.TensorBoardLogger
+      init_args:
+        save_dir: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_logs
+        name: lam_ssv2_clip_regression
+    - class_path: lightning.pytorch.loggers.WandbLogger
+      init_args:
+        project: adaworld-lam
+        name: lam_ssv2_clip_regression_4gpu
+        id: lam-ssv2-clip-regression-4gpu-v6
+        resume: allow
+        save_dir: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_logs

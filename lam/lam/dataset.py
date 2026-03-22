@@ -141,10 +141,20 @@ class VideoDataset(Dataset):
         self.color_aug = color_aug
 
         # Get all the file path based on the split path
-        self.file_names = []
-        for file_name in listdir(split_path):
-            if file_name.endswith(".mp4") or file_name.endswith(".webm"):
-                self.file_names.append(path.join(split_path, file_name))
+        cache_path = split_path.rstrip("/") + ".filelist"
+        if path.exists(cache_path):
+            with open(cache_path) as f:
+                self.file_names = [line.strip() for line in f if line.strip()]
+        else:
+            self.file_names = []
+            for file_name in listdir(split_path):
+                if file_name.endswith(".mp4") or file_name.endswith(".webm"):
+                    self.file_names.append(path.join(split_path, file_name))
+            try:
+                with open(cache_path, "w") as f:
+                    f.write("\n".join(self.file_names))
+            except:
+                pass
 
     def __len__(self) -> int:
         return len(self.file_names)
@@ -158,7 +168,9 @@ class VideoDataset(Dataset):
                     self.num_frames,
                     None if self.randomize else 0
                 )
-                return self.build_data_dict(video)
+                data = self.build_data_dict(video)
+                data["video_path"] = video_path
+                return data
             except:
                 idx = randint(0, len(self) - 1)
                 video_path = self.file_names[idx]
@@ -394,6 +406,11 @@ class MultiSourceSamplerDataset(Dataset):
         elif env_source == "robot":
             for env in listdir(path.join(data_root, "openx")):
                 folders.append(path.join(data_root, "openx", env, split))
+        elif env_source == "ssv2_our_mira":
+            for src in ["ssv2_our", "mira"]:
+                src_split = path.join(data_root, src, split)
+                if path.exists(src_split):
+                    folders.append(src_split)
         elif path.exists(path.join(data_root, env_source, split)):
             folders.append(path.join(data_root, env_source, split))
         else:
@@ -484,19 +501,35 @@ class LightningVideoDataset(LightningDataset):
                 samples_per_epoch=self.samples_per_epoch,
                 sampling_strategy=self.sampling_strategy
             )
-            self.val_dataset = MultiSourceSamplerDataset(
-                data_root=self.data_root,
-                env_source="procgen",
-                split="test",
-                padding=self.padding,
-                randomize=self.randomize,
-                resolution=self.resolution,
-                num_frames=self.num_frames,
-                output_format=self.output_format,
-                samples_per_epoch=self.samples_per_epoch // 1000,
-                sampling_strategy=self.sampling_strategy,
-                color_aug=False
-            )
+            try:
+                self.val_dataset = MultiSourceSamplerDataset(
+                    data_root=self.data_root,
+                    env_source=self.env_source,
+                    split="test",
+                    padding=self.padding,
+                    randomize=self.randomize,
+                    resolution=self.resolution,
+                    num_frames=self.num_frames,
+                    output_format=self.output_format,
+                    samples_per_epoch=self.samples_per_epoch // 1000,
+                    sampling_strategy=self.sampling_strategy,
+                    color_aug=False
+                )
+            except ValueError:
+                print(f"No test split found for env_source={self.env_source}, using train for val")
+                self.val_dataset = MultiSourceSamplerDataset(
+                    data_root=self.data_root,
+                    env_source=self.env_source,
+                    split="train",
+                    padding=self.padding,
+                    randomize=self.randomize,
+                    resolution=self.resolution,
+                    num_frames=self.num_frames,
+                    output_format=self.output_format,
+                    samples_per_epoch=self.samples_per_epoch // 1000,
+                    sampling_strategy=self.sampling_strategy,
+                    color_aug=False
+                )
         elif stage == "test":
             self.test_dataset = OriginalVideoDataset(
                 data_root=self.data_root,

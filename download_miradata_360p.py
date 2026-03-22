@@ -27,7 +27,7 @@ for i, row in tqdm.tqdm(df.iterrows()):
             # Download
             try:
                 if "youtube" in row["source"]:
-                    ret = os.system(f"yt-dlp -S vcodec:h264,res:360,acodec:aac -o '{raw_video_download_path}' -- {row['video_url'].split('watch?v=')[-1]}")
+                    ret = os.system(f"yt-dlp --cookies /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/youtube_cookies.txt --js-runtimes node --remote-components ejs:github -S vcodec:h264,res:360,acodec:aac -o '{raw_video_download_path}' -- {row['video_url'].split('watch?v=')[-1]}")
                 else:
                     res = requests.get(row["video_url"], stream=True)
                     if os.path.exists(raw_video_download_path + ".tmp"):

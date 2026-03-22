@@ -1,3 +1,4 @@
+import threading
 from os import makedirs, path
 from typing import Callable, Dict, Iterable, Tuple
 
@@ -95,9 +96,59 @@ class LAM(LightningModule):
             on_epoch=False
         )
 
-        if batch_idx % self.log_interval == 0:  # Start of the epoch
+        if batch_idx % self.log_interval == 0 and self.global_rank == 0:
+            # Save to disk immediately (fast, no network)
             self.log_images(batch, outputs, "train")
+            # Cache CPU tensors for async WandB upload in on_train_batch_end
+            self._wandb_cache = {
+                "input": batch["videos"][0, 0].clamp(0, 1).detach().cpu(),
+                "gt": batch["videos"][0, 1].clamp(0, 1).detach().cpu(),
+                "pred": outputs["recon"][0, 0].clamp(0, 1).detach().cpu(),
+                "split": "train",
+                "step": self.global_step,
+            }
         return loss
+
+    def on_train_batch_end(self, out, batch, batch_idx) -> None:
+        # Only rank 0, only when there's something to upload
+        if not hasattr(self, "_wandb_cache"):
+            return
+        cache = self._wandb_cache
+        del self._wandb_cache
+
+        # Find WandB logger once
+        wandb_logger = None
+        for logger in self.loggers:
+            if type(logger).__name__ == "WandbLogger":
+                wandb_logger = logger
+                break
+        if wandb_logger is None:
+            return
+
+        # Fire-and-forget background thread — no CUDA, pure CPU/network, won't block DDP
+        def _upload(cache, wandb_logger):
+            try:
+                import wandb
+                inp = (cache["input"].numpy() * 255).astype(np.uint8)
+                gt = (cache["gt"].numpy() * 255).astype(np.uint8)
+                pred = (cache["pred"].numpy() * 255).astype(np.uint8)
+                # Grid: row 1 = input -> GT next frame, row 2 = input -> predicted next frame
+                row1 = np.concatenate([inp, gt], axis=1)
+                row2 = np.concatenate([inp, pred], axis=1)
+                grid = np.concatenate([row1, row2], axis=0)
+                wandb_logger.experiment.log({
+                    f"{cache['split']}/input_frame": wandb.Image(inp, caption="Input (frame t)"),
+                    f"{cache['split']}/gt_next_frame": wandb.Image(gt, caption="GT (frame t+1)"),
+                    f"{cache['split']}/predicted_frame": wandb.Image(pred, caption="Predicted (frame t+1)"),
+                    f"{cache['split']}/frame_comparison": wandb.Image(
+                        grid, caption="Top: input→GT | Bottom: input→predicted"),
+                    "trainer/global_step": cache["step"],
+                })
+            except Exception as e:
+                print(f"[WandB] Image upload failed: {e}")
+
+        thread = threading.Thread(target=_upload, args=(cache, wandb_logger), daemon=True)
+        thread.start()
 
     # @torch.no_grad()
     # def validation_step(self, batch: Dict, batch_idx: int) -> Tensor:
@@ -137,8 +188,9 @@ class LAM(LightningModule):
         return loss
 
     def log_images(self, batch: Dict, outputs: Dict, split: str) -> None:
+        # Saves a side-by-side comparison image to disk only — no network calls here
         gt_seq = batch["videos"][0].clamp(0, 1).cpu()
-        recon_seq = outputs["recon"][0].clamp(0, 1).cpu()
+        recon_seq = outputs["recon"][0].clamp(0, 1).detach().cpu()
         recon_seq = torch.cat([gt_seq[:1], recon_seq], dim=0)
         compare_seq = torch.cat([gt_seq, recon_seq], dim=1)
         compare_seq = rearrange(compare_seq * 255, "t h w c -> h (t w) c")
@@ -148,7 +200,7 @@ class LAM(LightningModule):
         img = Image.fromarray(compare_seq)
         try:
             img.save(img_path)
-        except:
+        except Exception:
             pass
 
     # def on_test_epoch_end(self) -> None:
