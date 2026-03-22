@@ -61,7 +61,7 @@ fi
 source "$VENV_DIR/bin/activate"
 echo "  Installing requirements..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-pip install -r "$SCRIPT_DIR/requirements_cc.txt" --quiet 2>&1 | tail -3
+pip install -r "$SCRIPT_DIR/requirements_cc.txt" 2>&1
 
 # 2. Download data from HuggingFace
 echo ""
