@@ -14,13 +14,30 @@
 #   bash setup_cc.sh <hf_repo_id> [data_dir]
 #
 # Example:
-#   bash setup_cc.sh YOUR_USERNAME/adaworld-data ./parquet_data
+#   bash setup_cc.sh sikarwarank/adaworld_data
+#   bash setup_cc.sh sikarwarank/adaworld_data /scratch/$USER/custom_path
 # =============================================================================
 
 set -e
 
 HF_REPO_ID="${1:?Usage: bash setup_cc.sh <hf_repo_id> [data_dir]}"
-DATA_DIR="${2:-./parquet_data}"
+
+# Default to scratch directory for fast I/O on compute clusters
+# Tries common scratch env vars, falls back to ~/scratch
+if [ -n "${SCRATCH:-}" ]; then
+    DEFAULT_DATA_DIR="$SCRATCH/WORLD_MODEL_PROJECT/parquet_data"
+elif [ -n "${SLURM_TMPDIR:-}" ]; then
+    # SLURM_TMPDIR is per-job local SSD — fast but ephemeral, not ideal for persistent data
+    DEFAULT_DATA_DIR="$SCRATCH/WORLD_MODEL_PROJECT/parquet_data"
+elif [ -d "$HOME/scratch" ]; then
+    DEFAULT_DATA_DIR="$HOME/scratch/WORLD_MODEL_PROJECT/parquet_data"
+elif [ -d "/scratch/$USER" ]; then
+    DEFAULT_DATA_DIR="/scratch/$USER/WORLD_MODEL_PROJECT/parquet_data"
+else
+    DEFAULT_DATA_DIR="$HOME/scratch/WORLD_MODEL_PROJECT/parquet_data"
+fi
+
+DATA_DIR="${2:-$DEFAULT_DATA_DIR}"
 
 echo "============================================"
 echo " AdaWorld Cross-Cluster Setup"
