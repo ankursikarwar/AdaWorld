@@ -74,7 +74,7 @@ open_clip_torch==2.32.0
 ordered-set==4.1.0
 packaging==24.2
 pandas
-pillow==12.1.1
+pillow==11.1.0
 piq==0.8.0
 platformdirs==4.9.4
 propcache==0.4.1
