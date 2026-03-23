@@ -61,7 +61,7 @@ httpx==0.28.1
 huggingface_hub==0.36.2
 idna==3.11
 ImageIO==2.37.3
-imageio-ffmpeg==0.6.0
+imageio-ffmpeg
 importlib_metadata==8.7.1
 importlib_resources==6.5.2
 inquirer==3.4.1
