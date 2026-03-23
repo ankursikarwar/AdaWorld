@@ -20,7 +20,7 @@ cloudpickle==3.1.2
 cmake==3.31.0
 contourpy
 cycler==0.12.1
-dateutils==0.6.12
+dateutils
 deepdiff==7.0.1
 deepspeed
 distro==1.9.0
