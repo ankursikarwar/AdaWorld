@@ -122,7 +122,7 @@ traitlets==5.14.3
 transformers==4.45.2
 triton
 typer==0.24.1
-typeshed_client==2.9.0
+typeshed_client==2.8.2
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.3
