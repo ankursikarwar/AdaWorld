@@ -158,7 +158,7 @@ torchvision
 tqdm==4.66.5
 traitlets==5.14.3
 transformers==4.45.2
-triton==3.6.0
+triton
 typer==0.24.1
 typeshed_client==2.9.0
 typing-inspection==0.4.2
