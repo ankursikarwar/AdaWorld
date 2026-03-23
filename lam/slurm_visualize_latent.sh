@@ -2,7 +2,7 @@
 #SBATCH --job-name=lam_umap
 #SBATCH --output=/network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/logs/lam_umap_%j.out
 #SBATCH --error=/network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/logs/lam_umap_%j.err
-#SBATCH --partition=long
+#SBATCH --partition=short-unkillable
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
