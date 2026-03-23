@@ -2,7 +2,7 @@
 #SBATCH --job-name=lam_umap
 #SBATCH --output=/network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/logs/lam_umap_%j.out
 #SBATCH --error=/network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/logs/lam_umap_%j.err
-#SBATCH --partition=short-unkillable
+#SBATCH --partition=long
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -17,4 +17,4 @@ conda activate adaworld
 
 cd /home/mila/a/ankur.sikarwar/Work/WORLD_MODEL_PROJECT/AdaWorld/lam
 
-python visualize_latent_actions.py
+python visualize_latent_actions_ssv2_mira.py
