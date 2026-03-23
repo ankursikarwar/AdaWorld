@@ -55,7 +55,7 @@ kornia
 lightning==2.1.4
 lightning-utilities==0.15.2
 lit==17.0.1
-llvmlite==0.46.0
+llvmlite==0.44.0
 loguru==0.7.3
 Markdown==3.10.2
 markdown-it-py==4.0.0
