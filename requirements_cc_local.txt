@@ -63,7 +63,7 @@ MarkupSafe==2.1.5
 matplotlib
 mdurl==0.1.2
 mpmath==1.3.0
-multidict==6.7.1
+multidict==6.6.0
 natsort==8.4.0
 networkx==3.4.2
 ninja==1.13.0
