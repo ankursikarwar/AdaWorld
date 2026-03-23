@@ -126,7 +126,7 @@ typeshed_client==2.8.2
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.3
-umap-learn==0.5.11
+umap-learn
 uritemplate==4.2.0
 wandb
 wcwidth==0.6.0
