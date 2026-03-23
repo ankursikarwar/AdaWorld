@@ -171,7 +171,7 @@ uvicorn==0.41.0
 wandb
 wcwidth==0.6.0
 websocket-client==1.9.0
-websockets==16.0
+websockets
 Werkzeug==3.1.6
 xformers
 xmod==1.9.0
