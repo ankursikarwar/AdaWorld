@@ -69,7 +69,7 @@ mkdir -p "$CACHE_BASE/pip" "$CACHE_BASE/cargo" "$CACHE_BASE/rustup"
 export CARGO_HOME="$CACHE_BASE/cargo"
 export RUSTUP_HOME="$CACHE_BASE/rustup"
 export XDG_CACHE_HOME="$CACHE_BASE"
-pip install --cache-dir "$CACHE_BASE/pip" -r "$SCRIPT_DIR/requirements_cc.txt" 2>&1
+pip install --no-index --cache-dir "$CACHE_BASE/pip" -r "$SCRIPT_DIR/requirements_cc.txt" 2>&1
 
 # 2. Download data from HuggingFace
 echo ""
