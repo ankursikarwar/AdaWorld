@@ -1,0 +1,2 @@
+# Packages that need PyPI (not in CC wheelhouse)
+kmeans-pytorch==0.3

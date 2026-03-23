@@ -69,7 +69,11 @@ mkdir -p "$CACHE_BASE/pip" "$CACHE_BASE/cargo" "$CACHE_BASE/rustup"
 export CARGO_HOME="$CACHE_BASE/cargo"
 export RUSTUP_HOME="$CACHE_BASE/rustup"
 export XDG_CACHE_HOME="$CACHE_BASE"
-pip install --no-index --cache-dir "$CACHE_BASE/pip" -r "$SCRIPT_DIR/requirements_cc.txt" 2>&1
+echo "  [Step 1] Installing from CC wheelhouse (no internet needed)..."
+pip install --no-index --cache-dir "$CACHE_BASE/pip" -r "$SCRIPT_DIR/requirements_cc_local.txt" 2>&1
+echo ""
+echo "  [Step 2] Installing remaining packages from PyPI (needs internet)..."
+pip install --cache-dir "$CACHE_BASE/pip" -r "$SCRIPT_DIR/requirements_cc_remote.txt" 2>&1
 
 # 2. Download data from HuggingFace
 echo ""
