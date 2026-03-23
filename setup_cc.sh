@@ -64,9 +64,12 @@ fi
 source "$VENV_DIR/bin/activate"
 echo "  Installing requirements..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PIP_CACHE="${DATA_DIR%/*}/pip_cache"
-mkdir -p "$PIP_CACHE"
-pip install --cache-dir "$PIP_CACHE" -r "$SCRIPT_DIR/requirements_cc.txt" 2>&1
+CACHE_BASE="${DATA_DIR%/*}/cache"
+mkdir -p "$CACHE_BASE/pip" "$CACHE_BASE/cargo" "$CACHE_BASE/rustup"
+export CARGO_HOME="$CACHE_BASE/cargo"
+export RUSTUP_HOME="$CACHE_BASE/rustup"
+export XDG_CACHE_HOME="$CACHE_BASE"
+pip install --cache-dir "$CACHE_BASE/pip" -r "$SCRIPT_DIR/requirements_cc.txt" 2>&1
 
 # 2. Download data from HuggingFace
 echo ""
