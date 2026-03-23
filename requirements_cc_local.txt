@@ -52,7 +52,7 @@ jsonpatch==1.33
 jsonpointer==3.0.0
 kiwisolver==1.4.8
 kornia
-lightning==2.0.8
+lightning==2.1.4
 lightning-utilities==0.15.3
 lit==18.1.8
 llvmlite==0.46.0
