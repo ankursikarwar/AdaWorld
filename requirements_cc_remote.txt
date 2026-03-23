@@ -1,3 +1,4 @@
 # Packages that need PyPI (not in CC wheelhouse)
 kmeans-pytorch==0.3
 opencv-python==4.10.0.84
+ptlflow
