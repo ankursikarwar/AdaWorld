@@ -76,7 +76,7 @@ jsonpointer==3.0.0
 kaleido==0.2.1
 kiwisolver==1.5.0
 kmeans-pytorch==0.3
-kornia==0.7.4
+kornia
 lightning==2.0.8
 lightning-cloud==0.6.0
 lightning-utilities==0.15.3
