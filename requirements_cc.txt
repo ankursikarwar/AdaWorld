@@ -49,7 +49,7 @@ joblib==1.5.3
 jsonargparse==4.40.2
 jsonpatch==1.33
 jsonpointer==3.0.0
-kiwisolver==1.5.0
+kiwisolver==1.4.8
 kmeans-pytorch==0.3
 kornia
 lightning==2.0.8
