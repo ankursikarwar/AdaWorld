@@ -101,7 +101,7 @@ open_clip_torch==3.3.0
 opencv-python==4.10.0.84
 ordered-set==4.1.0
 packaging==24.2
-pandas==2.3.3
+pandas
 pillow==12.1.1
 piq==0.8.0
 platformdirs==4.9.4
