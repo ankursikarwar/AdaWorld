@@ -19,7 +19,6 @@ click==8.3.1
 cloudpickle==3.1.2
 cmake==3.31.0
 contourpy
-croniter
 cycler==0.12.1
 dateutils==0.6.12
 deepdiff==7.0.1
