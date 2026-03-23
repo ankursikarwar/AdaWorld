@@ -71,7 +71,6 @@ numba
 numpy==1.26.4
 omegaconf==2.3.0
 open_clip_torch==2.32.0
-opencv-python==4.10.0.84
 ordered-set==4.1.0
 packaging==24.2
 pandas
