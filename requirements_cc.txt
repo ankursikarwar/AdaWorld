@@ -106,7 +106,6 @@ pillow==12.1.1
 piq==0.8.0
 platformdirs==4.9.4
 plotly==5.24.1
-procgen==0.10.7
 propcache==0.4.1
 proto-plus==1.27.1
 protobuf==5.29.6
