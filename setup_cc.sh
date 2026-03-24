@@ -52,7 +52,7 @@ echo "[1/4] Loading modules and setting up Python environment..."
 module load StdEnv/2023 intel/2023.2.1 2>/dev/null || {
     echo "  WARNING: 'module load' not available or some modules missing."
 }
-module load cuda/11.8 arrow/17 python/3.10 2>/dev/null || {
+module load cuda/11.8 arrow/17 python/3.10 httpproxy 2>/dev/null || {
     echo "  WARNING: 'module load' not available or some modules missing."
     echo "  Make sure CUDA 11.8, Python 3.10, pyarrow, and opencv are available."
 }
