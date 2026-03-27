@@ -19,18 +19,16 @@ model:
 
 # ---- CC: reads from parquet data instead of raw video files ----
 data:
-  class_path: lam.dataset_cc.LightningVideoDataset_cc
-  init_args:
-    batch_size: 40
-    data_root: ../parquet_data
-    env_source: game
-    padding: repeat
-    randomize: true
-    resolution: 256
-    num_frames: 2
-    output_format: t h w c
-    samples_per_epoch: 10000000
-    sampling_strategy: pi
+  batch_size: 60
+  data_root: ../parquet_data
+  env_source: game
+  padding: repeat
+  randomize: true
+  resolution: 256
+  num_frames: 2
+  output_format: t h w c
+  samples_per_epoch: 10000000
+  sampling_strategy: pi
 
 trainer:
   max_epochs: 1000

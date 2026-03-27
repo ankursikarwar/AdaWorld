@@ -7,27 +7,29 @@ model:
   lam_enc_blocks: 16
   lam_dec_blocks: 16
   lam_num_heads: 16
+  lam_causal_temporal: true
 
   beta: 0.0002
-  log_interval: 1000
-  log_path: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_imgs_ssv2_our_mira
+  log_interval: 500
+  log_path: /scratch/a/ankur99/WORLD_MODEL_PROJECT/lam/lam_logs/exp_imgs_ssv2_our_mira_seg_bs12
   optimizer:
     class_path: torch.optim.AdamW
     init_args:
-      lr: 2.5e-5
+      lr: 1e-5
       weight_decay: 1e-2
 
+# ---- CC: segment-level (T=8), bs16 ----
 data:
-  batch_size: 60
-  data_root: ../data
+  batch_size: 12
+  data_root: /scratch/a/ankur99/WORLD_MODEL_PROJECT/parquet_data
   env_source: ssv2_our_mira
   padding: repeat
   randomize: true
   resolution: 256
-  num_frames: 2
+  num_frames: 8
   output_format: t h w c
   samples_per_epoch: 1000000
-  sampling_strategy: sample
+  sampling_strategy: dataset
 
 trainer:
   max_epochs: 1000
@@ -36,27 +38,28 @@ trainer:
   devices: 0,1,2,3
   strategy: ddp_find_unused_parameters_false
   precision: 16-mixed
-  log_every_n_steps: 1000
-  accumulate_grad_batches: 1
+  log_every_n_steps: 500
+  accumulate_grad_batches: 4
   gradient_clip_val: 0.3
 
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
-        dirpath: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_ckpts_ssv2_our_mira_v1
+        dirpath: /scratch/a/ankur99/WORLD_MODEL_PROJECT/lam/lam_logs/exp_ckpts_ssv2_our_mira_seg_bs12_v3
         verbose: true
         save_last: true
         save_top_k: -1
+        every_n_train_steps: 9000
 
   logger:
     - class_path: lightning.pytorch.loggers.TensorBoardLogger
       init_args:
-        save_dir: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_logs
-        name: lam_ssv2_our_mira
+        save_dir: /scratch/a/ankur99/WORLD_MODEL_PROJECT/lam/lam_logs
+        name: lam_ssv2_our_mira_seg_bs12
     - class_path: lightning.pytorch.loggers.WandbLogger
       init_args:
         project: adaworld-lam
-        name: lam_ssv2_our_mira_4gpu
-        id: lam-ssv2-our-mira-4gpu-v1
+        name: lam_ssv2_our_mira_cc_seg_bs12_v3_lr1e5
+        id: lam-ssv2-our-mira-cc-seg-bs12-v3
         resume: allow
-        save_dir: /network/scratch/a/ankur.sikarwar/WORLD_MODEL_PROJECT/lam/exp_logs
+        save_dir: /scratch/a/ankur99/WORLD_MODEL_PROJECT/lam/lam_logs

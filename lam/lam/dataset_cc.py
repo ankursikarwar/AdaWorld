@@ -301,14 +301,20 @@ class MultiSourceSamplerDataset_cc(Dataset):
             for src in ["ssv2_our", "mira"]:
                 split_dir = os.path.join(data_root, src, split)
                 if not os.path.isdir(split_dir):
+                    print(f"[DATA] Skipping {src}/{split}: directory not found")
                     continue
                 shards = sorted([
                     os.path.join(split_dir, f)
                     for f in os.listdir(split_dir) if f.endswith(".parquet")
                 ])
+                print(f"[DATA] {src}/{split}: found {len(shards)} parquet shards")
                 if shards:
-                    tables = [pq.read_table(s) for s in shards]
+                    tables = []
+                    for i, s in enumerate(shards):
+                        print(f"[DATA]   Loading shard {i+1}/{len(shards)}: {os.path.basename(s)} ({os.path.getsize(s) / 1e9:.1f} GB)")
+                        tables.append(pq.read_table(s))
                     table = pa.concat_tables(tables) if len(tables) > 1 else tables[0]
+                    print(f"[DATA] {src}/{split}: {len(table)} videos loaded, {table.nbytes / 1e9:.1f} GB in memory")
                     shard_groups.append((src, table))
         else:
             split_dir = os.path.join(data_root, env_source, split)

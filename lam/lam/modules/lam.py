@@ -21,7 +21,8 @@ class LatentActionModel(nn.Module):
             enc_blocks: int,
             dec_blocks: int,
             num_heads: int,
-            dropout: float = 0.0
+            dropout: float = 0.0,
+            causal_temporal: bool = False
     ) -> None:
         super(LatentActionModel, self).__init__()
         self.model_dim = model_dim
@@ -37,7 +38,8 @@ class LatentActionModel(nn.Module):
             out_dim=model_dim,
             num_blocks=enc_blocks,
             num_heads=num_heads,
-            dropout=dropout
+            dropout=dropout,
+            causal_temporal=causal_temporal
         )
         self.fc = nn.Linear(model_dim, latent_dim * 2)
         self.patch_up = nn.Linear(patch_token_dim, model_dim)

@@ -29,6 +29,7 @@ class LAM(LightningModule):
             lam_dec_blocks: int = 8,
             lam_num_heads: int = 8,
             lam_dropout: float = 0.0,
+            lam_causal_temporal: bool = False,
             beta: float = 0.01,
             log_interval: int = 1000,
             log_path: str = "log_imgs",
@@ -43,7 +44,8 @@ class LAM(LightningModule):
             enc_blocks=lam_enc_blocks,
             dec_blocks=lam_dec_blocks,
             num_heads=lam_num_heads,
-            dropout=lam_dropout
+            dropout=lam_dropout,
+            causal_temporal=lam_causal_temporal
         )
         self.beta = beta
         self.log_interval = log_interval
@@ -56,14 +58,20 @@ class LAM(LightningModule):
         outputs = self.lam(batch)
         gt_future_frames = batch["videos"][:, 1:]
 
+        # Guard against fp16 overflow producing NaN/Inf in recon
+        outputs["recon"] = torch.nan_to_num(outputs["recon"], nan=0.0, posinf=1.0, neginf=0.0)
+        recon_safe = outputs["recon"]
+
         # Compute loss
-        mse_loss = ((gt_future_frames - outputs["recon"]) ** 2).mean()
-        kl_loss = -0.5 * torch.sum(1 + outputs["z_var"] - outputs["z_mu"] ** 2 - outputs["z_var"].exp(), dim=1).mean()
+        mse_loss = ((gt_future_frames - recon_safe) ** 2).mean()
+        # Guard z_var.exp() against fp16 overflow (exp overflows fp16 above ~88)
+        z_var_safe = torch.nan_to_num(outputs["z_var"], nan=0.0, posinf=10.0, neginf=-10.0)
+        kl_loss = -0.5 * torch.sum(1 + z_var_safe - outputs["z_mu"] ** 2 - z_var_safe.exp(), dim=1).mean()
         loss = mse_loss + self.beta * kl_loss
 
         # Compute monitoring measurements
         gt = gt_future_frames.clamp(0, 1).reshape(-1, *gt_future_frames.shape[2:]).permute(0, 3, 1, 2)
-        recon = outputs["recon"].clamp(0, 1).reshape(-1, *outputs["recon"].shape[2:]).permute(0, 3, 1, 2)
+        recon = recon_safe.clamp(0, 1).reshape(-1, *recon_safe.shape[2:]).permute(0, 3, 1, 2)
         psnr = piq.psnr(gt, recon).mean()
         ssim = piq.ssim(gt, recon).mean()
         return outputs, loss, (
@@ -96,18 +104,69 @@ class LAM(LightningModule):
             on_epoch=False
         )
 
+        # Option B: per-timestep MSE — shows whether early vs late pairs are harder
+        T = batch["videos"].shape[1]
+        if T > 2:
+            gt_future = batch["videos"][:, 1:]
+            recon = outputs["recon"]
+            self.log_dict(
+                {f"train/mse_t{t}": ((gt_future[:, t] - recon[:, t]) ** 2).mean()
+                 for t in range(T - 1)},
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+                logger=True
+            )
+
         if batch_idx % self.log_interval == 0 and self.global_rank == 0:
             # Save to disk immediately (fast, no network)
             self.log_images(batch, outputs, "train")
             # Cache CPU tensors for async WandB upload in on_train_batch_end
+            n_vis = min(4, batch["videos"].shape[0])
             self._wandb_cache = {
-                "input": batch["videos"][0, 0].clamp(0, 1).detach().cpu(),
-                "gt": batch["videos"][0, 1].clamp(0, 1).detach().cpu(),
-                "pred": outputs["recon"][0, 0].clamp(0, 1).detach().cpu(),
+                "gt_frames": batch["videos"][:n_vis].clamp(0, 1).detach().cpu(),
+                "recon_frames": outputs["recon"][:n_vis].clamp(0, 1).detach().cpu(),
                 "split": "train",
                 "step": self.global_step,
             }
         return loss
+
+    def on_train_epoch_end(self) -> None:
+        # Option A: epoch-averaged smooth curves — Lightning auto-aggregates
+        # metrics logged with on_epoch=True. We pull them from the callback_metrics
+        # dict and re-log under clean "smooth/" names so WandB shows one clean line
+        # per metric (not the noisy per-step line) for easy visual comparison.
+        smooth_keys = [
+            ("train/mse_loss_epoch", "smooth/mse_loss"),
+            ("train/kl_loss_epoch",  "smooth/kl_loss"),
+            ("train/psnr_epoch",     "smooth/psnr"),
+            ("train/ssim_epoch",     "smooth/ssim"),
+        ]
+        logged = {}
+        for src_key, dst_key in smooth_keys:
+            val = self.trainer.callback_metrics.get(src_key)
+            if val is not None:
+                logged[dst_key] = val.item() if hasattr(val, "item") else float(val)
+
+        # Also add per-timestep epoch averages if they exist (from Option B)
+        for key, val in self.trainer.callback_metrics.items():
+            if key.startswith("train/mse_t") and key.endswith("_epoch"):
+                t_idx = key[len("train/mse_t"):-len("_epoch")]
+                logged[f"smooth/mse_t{t_idx}"] = val.item() if hasattr(val, "item") else float(val)
+
+        if logged and self.global_rank == 0:
+            wandb_logger = None
+            for logger in self.loggers:
+                if type(logger).__name__ == "WandbLogger":
+                    wandb_logger = logger
+                    break
+            if wandb_logger is not None:
+                import wandb
+                wandb_logger.experiment.log({
+                    **logged,
+                    "trainer/global_step": self.global_step,
+                    "epoch": self.current_epoch,
+                })
 
     def on_train_batch_end(self, out, batch, batch_idx) -> None:
         # Only rank 0, only when there's something to upload
@@ -129,19 +188,21 @@ class LAM(LightningModule):
         def _upload(cache, wandb_logger):
             try:
                 import wandb
-                inp = (cache["input"].numpy() * 255).astype(np.uint8)
-                gt = (cache["gt"].numpy() * 255).astype(np.uint8)
-                pred = (cache["pred"].numpy() * 255).astype(np.uint8)
-                # Grid: row 1 = input -> GT next frame, row 2 = input -> predicted next frame
-                row1 = np.concatenate([inp, gt], axis=1)
-                row2 = np.concatenate([inp, pred], axis=1)
-                grid = np.concatenate([row1, row2], axis=0)
+                gt = (cache["gt_frames"].numpy() * 255).astype(np.uint8)   # (n, T, H, W, C)
+                rc = (cache["recon_frames"].numpy() * 255).astype(np.uint8) # (n, T-1, H, W, C)
+                n, T = gt.shape[:2]
+                # For each sample: two rows side by side across time
+                #   Row 1 (GT):    [f0 | f1 | f2 | ... | f_{T-1}]
+                #   Row 2 (Recon): [f0 | recon_1 | ... | recon_{T-1}]
+                rows = []
+                for i in range(n):
+                    gt_row   = np.concatenate([gt[i, t] for t in range(T)], axis=1)
+                    recon_row = np.concatenate([gt[i, 0]] + [rc[i, t] for t in range(T - 1)], axis=1)
+                    rows.append(np.concatenate([gt_row, recon_row], axis=0))
+                grid = np.concatenate(rows, axis=0)
                 wandb_logger.experiment.log({
-                    f"{cache['split']}/input_frame": wandb.Image(inp, caption="Input (frame t)"),
-                    f"{cache['split']}/gt_next_frame": wandb.Image(gt, caption="GT (frame t+1)"),
-                    f"{cache['split']}/predicted_frame": wandb.Image(pred, caption="Predicted (frame t+1)"),
-                    f"{cache['split']}/frame_comparison": wandb.Image(
-                        grid, caption="Top: input→GT | Bottom: input→predicted"),
+                    f"{cache['split']}/segment_grid": wandb.Image(
+                        grid, caption=f"Top: GT frames | Bottom: f0 + reconstructions (T={T}, {n} samples)"),
                     "trainer/global_step": cache["step"],
                 })
             except Exception as e:
